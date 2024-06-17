@@ -164,7 +164,11 @@ Também vamos precisar do pacote CSV.jl para ler os arquivos do disco:
 md"""
 #### Carregando arquivos do disco
 
-Carregar arquivos CSV do disco é bastante fácil com o `CSV.File`:
+Carregar arquivos CSV do disco é bastante fácil com o `CSV.File`. Aqui usaremos os dados abertos do [Macpass Project](https://fireweedmetals.com/macpass-disclaimer), disponibilizado pela [Fireweed](https://fireweedmetals.com) com o seguinte disclaimer:
+
+>Fireweed is not responsible for misuse or manipulation of data, or for any interpretations based on The Dataset. Users agree to use The Dataset for their own purposes only. Fireweed disclaims any liability for any damages, losses, or claims arising out of or in connection with the use of The Dataset.
+>
+>By accessing, downloading, or using The Dataset, users acknowledge and agree to the terms of this disclaimer. If you do not agree with these terms, refrain from using The Dataset.
 """
 
 # ╔═╡ e615060b-bb5d-490a-ba3a-029a48b77bd3
