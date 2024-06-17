@@ -74,7 +74,7 @@ tableGI = chemi
 
 bbox = boundingbox(tableGI.geometry)
 
-grid = CartesianGrid(minimum(bbox), maximum(bbox), (50u"m", 50u"m", 10u"m"))
+grid = CartesianGrid(minimum(bbox), maximum(bbox), (50u"m", 50u"m", 20u"m"))
 
 viz(tableGI.geometry)
 viz!(grid, showsegments = true, alpha = 0.2)
