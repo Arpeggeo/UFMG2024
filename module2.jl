@@ -201,7 +201,7 @@ Vamos construir juntos o nosso primeiro `Collar`! Basta fornecer o arquivo CSV q
 """
 
 # ╔═╡ 025d182b-0a26-43d3-a971-31d320b20a70
-collar = missing
+collar = Collar(cfile, holeid="HoleID")
 
 # ╔═╡ 5caf2c63-8989-41b0-a16c-65ece8ca7e02
 md"""
@@ -211,7 +211,7 @@ Agora que você já sabe converter um arquivo CSV para uma tabela `Collar`, repi
 """
 
 # ╔═╡ af645676-ec62-4b86-bd1a-13abbe883af9
-survey = missing
+survey = Survey(sfile, holeid="HoleID", at="Depth_m")
 
 # ╔═╡ f1134496-fc8b-4390-a565-52852fd8927b
 md"""
@@ -221,10 +221,10 @@ Repita o processo para construir duas tabelas `Interval` a partir de `ifile1` e 
 """
 
 # ╔═╡ 2f4ac9b2-8757-4475-bfdb-d039a18ade01
-interv1 = missing
+interv1 = Interval(ifile1, holeid="HoleID", from="From_m", to="To_m")
 
 # ╔═╡ 0d50e6f4-1f8e-4eba-b6a3-5b4111a2037c
-interv2 = missing
+interv2 = Interval(ifile2)
 
 # ╔═╡ 68a69185-3bec-43e5-84e3-a2414ab1869b
 md"""
@@ -234,7 +234,7 @@ Com todas as tabelas definidas, podemos utilizar a função `desurvey` para reto
 """
 
 # ╔═╡ 239ce2fe-725a-4333-81a4-a6e47daad018
-holes = missing
+holes = desurvey(collar, survey, [interv1, interv2])
 
 # ╔═╡ ca01ca4c-7965-4594-8d2f-5d08080205d2
 md"""
@@ -259,7 +259,7 @@ Vamos iniciar nossa investigação com o a visualização de todas as variáveis
 """
 
 # ╔═╡ 07181f5e-8183-4aa2-8149-9ff1d7d02aa7
-# holes |> viewer
+holes |> viewer
 
 # ╔═╡ 04b5f070-c84a-45e2-b4d8-151a730b8040
 md"""
@@ -304,13 +304,16 @@ Abaixo traduzimos essas etapas de limpeza em forma de código:
 """
 
 # ╔═╡ f498f6a7-b189-4632-a908-b6ae4ac612c7
-# clean = holes |> Select(
-#                    2 => "Ag [ppm]",
-#                    10 => "Pb [percent]",
-#                    11 => "Zn [percent]",
-#                    3 => "ρ [Mg/m^3]",
-#                    6 => "DOMAIN",
-#                    8 => "RECOVERY")
+clean = holes |> Select(
+                   2 => "Ag [ppm]",
+                   10 => "Pb [percent]",
+                   11 => "Zn [percent]",
+                   3 => "ρ [Mg/m^3]",
+                   6 => "DOMAIN",
+                   8 => "RECOVERY") |>
+                 DropMissing() |>
+                 Unitify() |>
+                 Map("RECOVERY" => highlow => "RECOVERY")
 
 # ╔═╡ 52f5860f-08ba-4521-8d35-1f3d9a9149a9
 md"""
@@ -318,10 +321,10 @@ Explorando os dados no `viewer`, decidimos focar nos domínios de mineralizaçã
 """
 
 # ╔═╡ aed979c2-9788-4e94-8a8b-8f63957690e5
-jason = missing
+jason = clean |> Filter(s -> occursin("Jason", s.DOMAIN))
 
 # ╔═╡ f7238281-5a1c-4a27-8bc6-ecd685ddb5dc
-# jason |> viewer
+jason |> viewer
 
 # ╔═╡ 3a4da0fb-3a90-41b2-a8f4-7573bca15975
 md"""
@@ -333,7 +336,7 @@ Primeiro obtemos a caixa que engloba todos os furos usando a função `boundingb
 """
 
 # ╔═╡ 934b9a46-9ecf-45bb-ac42-97a3d02ddbb6
-bbox = missing
+bbox = boundingbox(jason.geometry)
 
 # ╔═╡ 5c97871d-060d-4d1b-9dee-03b2ac64777d
 md"""
@@ -341,7 +344,7 @@ Em seguida, usamos os pontos extremos da caixa para definir um grid com um certo
 """
 
 # ╔═╡ 9c61d084-d16b-4b4d-b709-f077806cf8d7
-grid = missing
+grid = CartesianGrid(minimum(bbox), maximum(bbox), (50u"m", 50u"m", 20u"m"))
 
 # ╔═╡ 496c002b-550b-49ec-9f53-8802db5bfcff
 md"""
@@ -358,10 +361,10 @@ Neste exemplo, estaremos utilizando um modelo simples de interpolação, já que
 """
 
 # ╔═╡ 45b26dd5-10ab-4c32-af7c-84304af607d1
-# gbm = jason |> Select(1:4) |> InterpolateNeighbors(grid, IDW())
+gbm = jason |> Select(1:4) |> InterpolateNeighbors(grid, IDW())
 
 # ╔═╡ b4d77a16-814a-44c8-9cef-4998c7f55e64
-# gbm |> Select("Zn") |> viewer
+gbm |> Select("Zn") |> viewer
 
 # ╔═╡ 806b46ba-b3b6-4eb2-88bc-ccf918a0b018
 md"""
@@ -376,13 +379,13 @@ Vejamos a distribuição multivariada de teores neste depósito:
 """
 
 # ╔═╡ 02c8abdf-142a-402b-be27-db948167a5cb
-# chemi = jason |> Select(1:3)
+chemi = jason |> Select(1:3)
 
 # ╔═╡ 5ad4c0ed-6f41-4159-b073-39d1b04c8d73
-# recov = jason |> Select(6)
+recov = jason |> Select(6)
 
 # ╔═╡ f67885b2-9029-4956-b8a9-c064d82f1675
-# chemi |> values |> pairplot
+chemi |> values |> pairplot
 
 # ╔═╡ bc35735b-035d-4f7e-8e99-02b7222ea917
 md"""
@@ -390,10 +393,10 @@ md"""
 """
 
 # ╔═╡ 85a674e1-814f-4737-b275-c4c284e02ce7
-# ratio = chemi |> CLR()
+ratio = chemi |> CLR()
 
 # ╔═╡ 588313b7-f8a7-45d9-baa2-5e5527c6f58a
-# ratio |> values |> pairplot
+ratio |> values |> pairplot
 
 # ╔═╡ b35d4e6c-25c0-457b-b0e0-16a040fefe47
 md"""
@@ -403,18 +406,18 @@ Toda vez que a recuperação for "High", marcaremos o ponto com a cor `teal`; e 
 """
 
 # ╔═╡ bcf3dacd-97f0-46a6-98a0-960674cbf4ca
-# let
-# 	table = ratio |> values
+let
+	table = ratio |> values
 
-# 	color = ifelse.(jason.RECOVERY .== "High", "teal", "red")
+	color = ifelse.(jason.RECOVERY .== "High", "teal", "red")
 	
-# 	pairplot(
-# 	  table => (
-# 		PairPlots.Scatter(color=color, markersize=2),
-# 		PairPlots.MarginDensity(),
-# 	  )
-# 	)
-# end
+	pairplot(
+	  table => (
+		PairPlots.Scatter(color=color, markersize=2),
+		PairPlots.MarginDensity(),
+	  )
+	)
+end
 
 # ╔═╡ 5768d7a9-987e-4520-90ac-6bc1c0ef4d7c
 md"""
@@ -424,7 +427,7 @@ Treinaremos um modelo de aprendizado de máquina que mapeia teores, ou suas raz�
 """
 
 # ╔═╡ 06695ef2-2796-48ce-a392-6694b00122d5
-# train = [ratio recov]
+train = [ratio recov]
 
 # ╔═╡ e6c39168-2de1-4c1d-b2b0-dd304d374951
 md"""
@@ -434,7 +437,7 @@ Neste exemplo, utilizaremos o modelo `RandomForestClassifier`:
 """
 
 # ╔═╡ 974ffa81-a44b-4beb-95fb-e763554aaeb1
-# model = RandomForestClassifier()
+model = RandomForestClassifier()
 
 # ╔═╡ aa8c018e-db2b-4018-873f-3e2d630b50b3
 md"""
@@ -442,7 +445,7 @@ Podemos então definir as variáveis de entrada no `GBM`:
 """
 
 # ╔═╡ 8f0903a6-a8d2-4e1c-a3e0-5c81a5290bcb
-# clr = gbm |> Select(1:3) |> CLR()
+clr = gbm |> Select(1:3) |> CLR()
 
 # ╔═╡ ab2e4868-6518-4d5c-a9ba-0652963405d5
 md"""
@@ -450,7 +453,7 @@ E prever recuperação nos blocos com o modelo preditivo:
 """
 
 # ╔═╡ d90b8c4f-79c3-47fc-85ab-0684e6ffdd8d
-# rec = clr |> Learn(train, model, [1, 2, 3] => "RECOVERY")
+rec = clr |> Learn(train, model, [1, 2, 3] => "RECOVERY")
 
 # ╔═╡ 3577ac41-87f3-42f6-ae57-c815dad2561f
 md"""
@@ -458,10 +461,10 @@ Finalmente temos nosso primeiro modelo geometalúrgico, que chamaremos de `GMBM`
 """
 
 # ╔═╡ cd87cdeb-87c3-4807-9406-185e0bb90382
-# gmbm = [gbm rec]
+gmbm = [gbm rec]
 
 # ╔═╡ 42887605-74d0-46b9-92ff-852c1bf18d76
-# gmbm |> Select("RECOVERY") |> viewer
+gmbm |> Select("RECOVERY") |> viewer
 
 # ╔═╡ 7303fa7a-bd27-4a34-b0f7-2400c4bf0776
 md"""
