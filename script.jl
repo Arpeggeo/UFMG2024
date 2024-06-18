@@ -71,7 +71,7 @@ tableGL = [ratio categ]
 
 ## Dataset for geostatistical interpolation
 
-tableGI = chemi
+tableGI = [chemi densi]
 
 ## Definition of grid
 
@@ -93,7 +93,7 @@ gbm |> viewer
 
 model = RandomForestClassifier()
 
-rec = gbm |> CLR() |> Learn(tableGL, model, [1, 2, 3] => "Recovery")
+rec = gbm |> Select(1:3) |> CLR() |> Learn(tableGL, model, [1, 2, 3] => "Recovery")
 
 gmbm = [gbm rec]
 
