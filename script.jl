@@ -20,20 +20,22 @@ holes |> viewer
 
 ## Select and clean variables
 
+recov(r) = r == "N" ? "High" : "Low"
+
 clean = holes |> Select(
                    2 => "Ag [ppm]",
                    10 => "Pb [percent]",
                    11 => "Zn [percent]",
                    3 => "ρ [Mg/m^3]",
-                   6 => "Domain",
-                   8 => "Recovery") |>
+                   6 => "DOMAIN",
+                   8 => "RECOVERY") |>
                  DropMissing() |>
                  Unitify() |>
-                 Map("Recovery" => (r -> ifelse(r == "N", "High", "Low")) => "Recovery")
+                 Map("RECOVERY" => recov => "RECOVERY")
 
 ## Zoom in Jason zone
 
-jason = clean |> Filter(x -> occursin("Jason", x.Domain))
+jason = clean |> Filter(x -> occursin("Jason", x.DOMAIN))
 
 jason |> viewer
 
@@ -55,8 +57,8 @@ ratio |> values |> pairplot
 
 table = ratio |> values
 
-color = levelcode.(categorical(categ.Domain))
-color = ifelse.(categ.Recovery .== "High", "teal", "red")
+color = levelcode.(categorical(categ.DOMAIN))
+color = ifelse.(categ.RECOVERY .== "High", "teal", "red")
 
 pairplot(
   table => (
@@ -93,7 +95,7 @@ gbm |> viewer
 
 model = RandomForestClassifier()
 
-rec = gbm |> Select(1:3) |> CLR() |> Learn(tableGL, model, [1, 2, 3] => "Recovery")
+rec = gbm |> Select(1:3) |> CLR() |> Learn(tableGL, model, [1, 2, 3] => "RECOVERY")
 
 gmbm = [gbm rec]
 
