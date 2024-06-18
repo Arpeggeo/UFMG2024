@@ -20,7 +20,7 @@ holes |> viewer
 
 ## Select and clean variables
 
-recov(r) = r == "N" ? "High" : "Low"
+highlow(r) = r == "N" ? "High" : "Low"
 
 clean = holes |> Select(
                    2 => "Ag [ppm]",
@@ -31,19 +31,35 @@ clean = holes |> Select(
                    8 => "RECOVERY") |>
                  DropMissing() |>
                  Unitify() |>
-                 Map("RECOVERY" => recov => "RECOVERY")
+                 Map("RECOVERY" => highlow => "RECOVERY")
 
 ## Zoom in Jason zone
 
-jason = clean |> Filter(x -> occursin("Jason", x.DOMAIN))
+jason = clean |> Filter(s -> occursin("Jason", s.DOMAIN))
 
 jason |> viewer
+
+## Grid definition
+
+bbox = boundingbox(jason.geometry)
+
+grid = CartesianGrid(minimum(bbox), maximum(bbox), (50u"m", 50u"m", 20u"m"))
+
+viz(jason.geometry)
+viz!(grid, showsegments = true, alpha = 0.2)
+Mke.current_figure()
+
+## Geostatistical block model
+
+gbm = jason |> Select(1:4) |> InterpolateNeighbors(grid, IDW())
+
+gbm |> viewer
 
 ## Multivariate analysis
 
 chemi = jason |> Select(1:3)
-densi = jason |> Select(4)
-categ = jason |> Select(5:6)
+
+recov = jason |> Select(6)
 
 chemi |> values |> pairplot
 
@@ -53,49 +69,32 @@ ratio = chemi |> CLR()
 
 ratio |> values |> pairplot
 
-## Geomet recovery
+## Learneability of recovery
 
 table = ratio |> values
 
-color = levelcode.(categorical(categ.DOMAIN))
-color = ifelse.(categ.RECOVERY .== "High", "teal", "red")
+color = ifelse.(jason.RECOVERY .== "High", "teal", "red")
 
 pairplot(
   table => (
-    PairPlots.Scatter(color=color),
-    PairPlots.MarginDensity(),
+  PairPlots.Scatter(color=color, markersize=2),
+  PairPlots.MarginDensity(),
   )
 )
 
-## Dataset for geostatistical learning
+## Learning model
 
-tableGL = [ratio categ]
-
-## Dataset for geostatistical interpolation
-
-tableGI = [chemi densi]
-
-## Definition of grid
-
-bbox = boundingbox(tableGI.geometry)
-
-grid = CartesianGrid(minimum(bbox), maximum(bbox), (50u"m", 50u"m", 20u"m"))
-
-viz(tableGI.geometry)
-viz!(grid, showsegments = true, alpha = 0.2)
-Mke.current_figure()
-
-## Geostatistical interpolation
-
-gbm = tableGI |> InterpolateNeighbors(grid, IDW())
-
-gbm |> viewer
-
-## Geostatistical learning
+train = [ratio recov]
 
 model = RandomForestClassifier()
 
-rec = gbm |> Select(1:3) |> CLR() |> Learn(tableGL, model, [1, 2, 3] => "RECOVERY")
+## Prediction of recovery
+
+clr = gbm |> Select(1:3) |> CLR()
+
+rec = clr |> Learn(train, model, [1, 2, 3] => "RECOVERY")
+
+## Geometallurgical model
 
 gmbm = [gbm rec]
 
