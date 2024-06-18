@@ -14,19 +14,22 @@ interp = Interval(CSV.File("data/domains.csv"))
 
 ## Perform desurveying
 
-dholes = desurvey(collar, survey, [interv, interp])
+holes = desurvey(collar, survey, [interv, interp])
 
-dholes |> viewer
+holes |> viewer
 
 ## Select and clean variables
 
-using GeoStats.DataScienceTraits: Continuous, Categorical
-
-data = dholes |> Select(2 => "Ag [ppm]", 10 => "Pb [percent]", 11 => "Zn [percent]", 3 => "ρ [Mg/m^3]", 6 => "Domain", 8 => "Recovery") |> DropMissing()
-cont = data |> Only(Continuous) |> Unitify()
-cate = data |> Only(Categorical) |> Map("Recovery" => (r -> ifelse(r == "N","High", "Low")) => "Recovery")
-
-clean = [cont cate]
+clean = holes |> Select(
+                   2 => "Ag [ppm]",
+                   10 => "Pb [percent]",
+                   11 => "Zn [percent]",
+                   3 => "ρ [Mg/m^3]",
+                   6 => "Domain",
+                   8 => "Recovery") |>
+                 DropMissing() |>
+                 Unitify() |>
+                 Map("Recovery" => (r -> ifelse(r == "N", "High", "Low")) => "Recovery")
 
 ## Zoom in Jason zone
 
@@ -37,8 +40,8 @@ jason |> viewer
 ## Multivariate analysis
 
 chemi = jason |> Select(1:3)
-densi = jason |> Select("ρ")
-categ = jason |> Only(Categorical)
+densi = jason |> Select(4)
+categ = jason |> Select(5:6)
 
 chemi |> values |> pairplot
 
