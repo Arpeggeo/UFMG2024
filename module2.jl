@@ -22,6 +22,9 @@ using CSV
 # ╔═╡ a25598f1-c257-444c-a8d6-b03f207bcd57
 using GeoStats
 
+# ╔═╡ 1dc7f348-5b49-4c41-a873-8a46900edba5
+using PairPlots
+
 # ╔═╡ a4e5e858-ef64-48e4-8d50-08f70e1fd265
 html"""
 <div style="
@@ -293,7 +296,7 @@ Faremos isso com "transforms" que consomem dados geoespaciais e produzem novos d
 """
 
 # ╔═╡ fe5688e2-5449-43de-a6ef-913120083b2e
-recov(r) = r == "N" ? "High" : "Low"
+highlow(r) = r == "N" ? "High" : "Low"
 
 # ╔═╡ 9042b4b6-176e-4977-9c74-48aaa8a70f20
 md"""
@@ -310,33 +313,158 @@ clean = holes |> Select(
                    8 => "RECOVERY") |>
                  DropMissing() |>
                  Unitify() |>
-                 Map("RECOVERY" => recov => "RECOVERY")
+                 Map("RECOVERY" => highlow => "RECOVERY")
+
+# ╔═╡ 52f5860f-08ba-4521-8d35-1f3d9a9149a9
+md"""
+Explorando os dados no `viewer`, decidimos focar nos domínios de mineralização da zona "Jason". Podemos filtrar os dados da seguinte forma:
+"""
+
+# ╔═╡ aed979c2-9788-4e94-8a8b-8f63957690e5
+jason = clean |> Filter(s -> occursin("Jason", s.DOMAIN))
+
+# ╔═╡ f7238281-5a1c-4a27-8bc6-ecd685ddb5dc
+jason |> viewer
 
 # ╔═╡ 3a4da0fb-3a90-41b2-a8f4-7573bca15975
 md"""
 ### Definição dos blocos
+
+Nosso objetivo é criar um modelo de blocos, e preencher esses blocos com estimativas de diferentes variáveis. A definição dos blocos pode ser feita através de um grid.
+
+Primeiro obtemos a caixa que engloba todos os furos usando a função `boundingbox` na coluna `geometry` das amostras da zona "Jason":
 """
+
+# ╔═╡ 934b9a46-9ecf-45bb-ac42-97a3d02ddbb6
+bbox = boundingbox(jason.geometry)
+
+# ╔═╡ 5c97871d-060d-4d1b-9dee-03b2ac64777d
+md"""
+Em seguida, usamos os pontos extremos da caixa para definir um grid com um certo espaçamento:
+"""
+
+# ╔═╡ 9c61d084-d16b-4b4d-b709-f077806cf8d7
+grid = CartesianGrid(minimum(bbox), maximum(bbox), (50u"m", 50u"m", 20u"m"))
 
 # ╔═╡ 496c002b-550b-49ec-9f53-8802db5bfcff
 md"""
 ## Modelo geometalúrgico 🎯
+
+Nosso objetivo é construir um modelo geometalúrgico com teores, densidade e recuperação para os domínios de mineralização da zona "Jason". Primeiro vamos interpolar os teores e densidade no modelo de blocos, e depois vamos prever a recuperação com base nas relações disponíveis nos dados.
 """
 
 # ╔═╡ 9da95e3a-542b-47e0-89e4-e2a5d72a6fd0
 md"""
 ### Interpolação de teores
+
+Neste exemplo, estaremos utilizando um modelo simples de interpolação, já que o propósito deste minicurso é ter uma visão ampla das ferramentas disponíveis. Faremos a interpolação de teores e densidade usando o modelo inverso da distância, conhecido como `IDW`. Salvaremos o resultado no nosso primeiro modelo geoestatístico na variável `GBM` ("Geostatistical Block Model"):
 """
 
 # ╔═╡ 45b26dd5-10ab-4c32-af7c-84304af607d1
+gbm = jason |> Select(1:4) |> InterpolateNeighbors(grid, IDW())
 
+# ╔═╡ b4d77a16-814a-44c8-9cef-4998c7f55e64
+gbm |> Select("Zn") |> viewer
 
 # ╔═╡ 806b46ba-b3b6-4eb2-88bc-ccf918a0b018
 md"""
 ### Predição de recuperação
+
+Para prever recuperação a partir de teores, precisamos primeiro investigar se existe algum potencial nesta modelagem. Uma maneira simples e visual de investigar distribuições multivariadas é utilizar o pacote PairPlots.jl:
 """
 
-# ╔═╡ 1dc7f348-5b49-4c41-a873-8a46900edba5
+# ╔═╡ 1a9a120a-846d-4efd-992d-4194eb1c42c5
+md"""
+Vejamos a distribuição multivariada de teores neste depósito:
+"""
 
+# ╔═╡ 02c8abdf-142a-402b-be27-db948167a5cb
+chemi = jason |> Select(1:3)
+
+# ╔═╡ 5ad4c0ed-6f41-4159-b073-39d1b04c8d73
+recov = jason |> Select(6)
+
+# ╔═╡ f67885b2-9029-4956-b8a9-c064d82f1675
+chemi |> values |> pairplot
+
+# ╔═╡ bc35735b-035d-4f7e-8e99-02b7222ea917
+md"""
+É bastante difícil visualizar distribuições de teores dado o seu formato "skewed" típico. Para conseguir entender melhor a distribuição multivariada, e por questões estatísticas técnicas além do escopo deste minicurso, vamos utilizar a transform `CLR` e olhar para razões logarítimicas:
+"""
+
+# ╔═╡ 85a674e1-814f-4737-b275-c4c284e02ce7
+ratio = chemi |> CLR()
+
+# ╔═╡ 588313b7-f8a7-45d9-baa2-5e5527c6f58a
+ratio |> values |> pairplot
+
+# ╔═╡ b35d4e6c-25c0-457b-b0e0-16a040fefe47
+md"""
+Para entender se a recuperação pode ser diferenciada a partir de teores, precisamos colorir todas as amostras no plot acima com recuperação "High" ou "Low". Se conseguirmos visualizar regiões do plot com mais concentração de uma das categorias, é sinal que existe uma função a ser aprendida com aprendizado geoestatístico.
+
+Toda vez que a recuperação for "High", marcaremos o ponto com a cor `teal`; e toda vez que a recuperação for "Low", marcaremos o ponto com a cor `red`:
+"""
+
+# ╔═╡ bcf3dacd-97f0-46a6-98a0-960674cbf4ca
+let
+	table = ratio |> values
+
+	color = ifelse.(jason.RECOVERY .== "High", "teal", "red")
+	
+	pairplot(
+	  table => (
+		PairPlots.Scatter(color=color, markersize=2),
+		PairPlots.MarginDensity(),
+	  )
+	)
+end
+
+# ╔═╡ 5768d7a9-987e-4520-90ac-6bc1c0ef4d7c
+md"""
+Para os propósitos deste minicurso, vamos abstrair um pouco o "overlap" de cores no plot, e vamos assumir que existe uma região majoritariamente vermelha de amostras com baixa recuperação.
+
+Treinaremos um modelo de aprendizado de máquina que mapeia teores, ou suas razões logarítimicas para recuperação. Precisamos construir uma tabela conhecida como tabela de treinamento para o modelo:
+"""
+
+# ╔═╡ 06695ef2-2796-48ce-a392-6694b00122d5
+train = [ratio recov]
+
+# ╔═╡ e6c39168-2de1-4c1d-b2b0-dd304d374951
+md"""
+Essa tabela define, de forma implícita, todas as relações entre as variáveis de entrada (e.g. `CLR1`, `CLR2`, `CLR3`), e as variáveis de saída (e.g. `RECOVERY`) do modelo preditivo.
+
+Neste exemplo, utilizaremos o modelo `RandomForestClassifier`:
+"""
+
+# ╔═╡ 974ffa81-a44b-4beb-95fb-e763554aaeb1
+model = RandomForestClassifier()
+
+# ╔═╡ aa8c018e-db2b-4018-873f-3e2d630b50b3
+md"""
+Podemos então definir as variáveis de entrada no `GBM`:
+"""
+
+# ╔═╡ 8f0903a6-a8d2-4e1c-a3e0-5c81a5290bcb
+clr = gbm |> Select(1:3) |> CLR()
+
+# ╔═╡ ab2e4868-6518-4d5c-a9ba-0652963405d5
+md"""
+E prever recuperação nos blocos com o modelo preditivo:
+"""
+
+# ╔═╡ d90b8c4f-79c3-47fc-85ab-0684e6ffdd8d
+rec = clr |> Learn(train, model, [1, 2, 3] => "RECOVERY")
+
+# ╔═╡ 3577ac41-87f3-42f6-ae57-c815dad2561f
+md"""
+Finalmente temos nosso primeiro modelo geometalúrgico, que chamaremos de `GMBM` ("Geometallurgical Block Model"):
+"""
+
+# ╔═╡ cd87cdeb-87c3-4807-9406-185e0bb90382
+gmbm = [gbm rec]
+
+# ╔═╡ 42887605-74d0-46b9-92ff-852c1bf18d76
+gmbm |> Select("RECOVERY") |> viewer
 
 # ╔═╡ 7303fa7a-bd27-4a34-b0f7-2400c4bf0776
 md"""
@@ -360,6 +488,7 @@ CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 DrillHoles = "9d36f3b5-8124-4f7e-bcda-df733105c718"
 GeoStats = "dcc97b0b-8ce5-5539-9008-bb190f959ef6"
+PairPlots = "43a3c2be-4208-490b-832a-a21dcd55d7da"
 PlutoTeachingTools = "661c6b06-c737-4d37-b85c-46df65de6f69"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 
@@ -368,6 +497,7 @@ CSV = "~0.10.14"
 CairoMakie = "~0.12.3"
 DrillHoles = "~1.3.4"
 GeoStats = "~0.59.0"
+PairPlots = "~2.7.3"
 PlutoTeachingTools = "~0.2.15"
 PlutoUI = "~0.7.59"
 """
@@ -378,7 +508,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.10.4"
 manifest_format = "2.0"
-project_hash = "d19d1c173797aebf51e3a058f915d515a63b67fd"
+project_hash = "0b2cc0471537f321af5f88a9d55b768af19ff323"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -1355,31 +1485,23 @@ deps = ["CRlibm_jll", "MacroTools", "RoundingEmulator"]
 git-tree-sha1 = "433b0bb201cd76cb087b017e49244f10394ebe9c"
 uuid = "d1acc4aa-44c8-5952-acd4-ba5d80a2a253"
 version = "0.22.14"
+weakdeps = ["DiffRules", "ForwardDiff", "RecipesBase"]
 
     [deps.IntervalArithmetic.extensions]
     IntervalArithmeticDiffRulesExt = "DiffRules"
     IntervalArithmeticForwardDiffExt = "ForwardDiff"
     IntervalArithmeticRecipesBaseExt = "RecipesBase"
 
-    [deps.IntervalArithmetic.weakdeps]
-    DiffRules = "b552c78f-8df3-52c6-915a-8e097449b14b"
-    ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
-    RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
-
 [[deps.IntervalSets]]
 git-tree-sha1 = "dba9ddf07f77f60450fe5d2e2beb9854d9a49bd0"
 uuid = "8197267c-284f-5f27-9208-e0e47529a953"
 version = "0.7.10"
+weakdeps = ["Random", "RecipesBase", "Statistics"]
 
     [deps.IntervalSets.extensions]
     IntervalSetsRandomExt = "Random"
     IntervalSetsRecipesBaseExt = "RecipesBase"
     IntervalSetsStatisticsExt = "Statistics"
-
-    [deps.IntervalSets.weakdeps]
-    Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
-    RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
-    Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [[deps.InverseFunctions]]
 deps = ["Test"]
@@ -1674,6 +1796,11 @@ deps = ["Artifacts", "Libdl"]
 uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
 version = "2.28.2+1"
 
+[[deps.Measures]]
+git-tree-sha1 = "c13304c81eec1ed3af7fc20e75fb6b26092a1102"
+uuid = "442fdcdd-2543-5da2-b0f3-8c86c306513e"
+version = "0.3.2"
+
 [[deps.Meshes]]
 deps = ["Bessels", "CircularArrays", "Colorfy", "CoordRefSystems", "DelaunayTriangulation", "Distances", "LinearAlgebra", "NearestNeighbors", "Random", "Rotations", "SparseArrays", "StaticArrays", "StatsBase", "Transducers", "TransformsBase", "Unitful"]
 git-tree-sha1 = "47776e90515339969b562e357a7bf9fa04da831c"
@@ -1720,6 +1847,11 @@ deps = ["OpenLibm_jll"]
 git-tree-sha1 = "0877504529a3e5c3343c6f8b4c0381e57e4387e4"
 uuid = "77ba4419-2d1f-58cd-9bb1-8ffee604a2e3"
 version = "1.0.2"
+
+[[deps.NamedTupleTools]]
+git-tree-sha1 = "90914795fc59df44120fe3fff6742bb0d7adb1d0"
+uuid = "d9ec5142-1e00-5aa0-9d6a-321866360f50"
+version = "0.14.3"
 
 [[deps.NearestNeighbors]]
 deps = ["Distances", "StaticArrays"]
@@ -1847,6 +1979,22 @@ deps = ["OffsetArrays"]
 git-tree-sha1 = "0fac6313486baae819364c52b4f483450a9d793f"
 uuid = "5432bcbf-9aad-5242-b902-cca2824c8663"
 version = "0.5.12"
+
+[[deps.PairPlots]]
+deps = ["Contour", "Distributions", "KernelDensity", "LinearAlgebra", "Makie", "Measures", "Missings", "NamedTupleTools", "OrderedCollections", "PolygonOps", "PrecompileTools", "Printf", "RecipesBase", "Requires", "StaticArrays", "Statistics", "StatsBase", "TableOperations", "Tables"]
+git-tree-sha1 = "00f5ad02e3ab71d6b486427b19dacedc932da874"
+uuid = "43a3c2be-4208-490b-832a-a21dcd55d7da"
+version = "2.7.3"
+
+    [deps.PairPlots.extensions]
+    MCMCChainsExt = "MCMCChains"
+    PairPlotsDynamicQuantitiesExt = "DynamicQuantities"
+    PairPlotsDynamicUnitfulExt = "Unitful"
+
+    [deps.PairPlots.weakdeps]
+    DynamicQuantities = "06fc5a27-2a28-4c7c-a15d-362465fb6821"
+    MCMCChains = "c7f686f2-ff18-58e9-bc7b-31028e88f75d"
+    Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [[deps.Pango_jll]]
 deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "FriBidi_jll", "Glib_jll", "HarfBuzz_jll", "JLLWrappers", "Libdl"]
@@ -2010,6 +2158,12 @@ git-tree-sha1 = "9f0a1b71baaf7650f4fa8a1d168c7fb6ee41f0c9"
 uuid = "c1ae055f-0cd5-4b69-90a6-9a35b1a98df9"
 version = "0.1.0"
 
+[[deps.RecipesBase]]
+deps = ["PrecompileTools"]
+git-tree-sha1 = "5c3d09cc4f31f5fc6af001c250bf1278733100ff"
+uuid = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
+version = "1.3.4"
+
 [[deps.Reexport]]
 git-tree-sha1 = "45e428421666073eab6f2da5c9d310d99bb12f9b"
 uuid = "189a3867-3050-52da-a836-e630ba90ab69"
@@ -2050,12 +2204,10 @@ deps = ["LinearAlgebra", "Quaternions", "Random", "StaticArrays"]
 git-tree-sha1 = "5680a9276685d392c87407df00d57c9924d9f11e"
 uuid = "6038ab10-8711-5258-84ad-4b1120ba62dc"
 version = "1.7.1"
+weakdeps = ["RecipesBase"]
 
     [deps.Rotations.extensions]
     RotationsRecipesBaseExt = "RecipesBase"
-
-    [deps.Rotations.weakdeps]
-    RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
 
 [[deps.RoundingEmulator]]
 git-tree-sha1 = "40b9edad2e5287e05bd413a38f61a8ff55b9557b"
@@ -2286,6 +2438,12 @@ deps = ["CategoricalArrays", "CoDa", "DataScienceTraits", "Distances", "Statisti
 git-tree-sha1 = "5ae64e757dc81003958185fc9d8eb130c15babc2"
 uuid = "e5d66e97-8c70-46bb-8b66-04a2d73ad782"
 version = "0.4.3"
+
+[[deps.TableOperations]]
+deps = ["SentinelArrays", "Tables", "Test"]
+git-tree-sha1 = "e383c87cf2a1dc41fa30c093b2a19877c83e1bc1"
+uuid = "ab02a1b2-a7df-11e8-156e-fb1833f50b87"
+version = "1.2.0"
 
 [[deps.TableTraits]]
 deps = ["IteratorInterfaceExtensions"]
@@ -2628,12 +2786,39 @@ version = "3.5.0+0"
 # ╠═fe5688e2-5449-43de-a6ef-913120083b2e
 # ╟─9042b4b6-176e-4977-9c74-48aaa8a70f20
 # ╠═f498f6a7-b189-4632-a908-b6ae4ac612c7
+# ╟─52f5860f-08ba-4521-8d35-1f3d9a9149a9
+# ╠═aed979c2-9788-4e94-8a8b-8f63957690e5
+# ╠═f7238281-5a1c-4a27-8bc6-ecd685ddb5dc
 # ╟─3a4da0fb-3a90-41b2-a8f4-7573bca15975
+# ╠═934b9a46-9ecf-45bb-ac42-97a3d02ddbb6
+# ╟─5c97871d-060d-4d1b-9dee-03b2ac64777d
+# ╠═9c61d084-d16b-4b4d-b709-f077806cf8d7
 # ╟─496c002b-550b-49ec-9f53-8802db5bfcff
 # ╟─9da95e3a-542b-47e0-89e4-e2a5d72a6fd0
 # ╠═45b26dd5-10ab-4c32-af7c-84304af607d1
+# ╠═b4d77a16-814a-44c8-9cef-4998c7f55e64
 # ╟─806b46ba-b3b6-4eb2-88bc-ccf918a0b018
 # ╠═1dc7f348-5b49-4c41-a873-8a46900edba5
+# ╟─1a9a120a-846d-4efd-992d-4194eb1c42c5
+# ╠═02c8abdf-142a-402b-be27-db948167a5cb
+# ╠═5ad4c0ed-6f41-4159-b073-39d1b04c8d73
+# ╠═f67885b2-9029-4956-b8a9-c064d82f1675
+# ╟─bc35735b-035d-4f7e-8e99-02b7222ea917
+# ╠═85a674e1-814f-4737-b275-c4c284e02ce7
+# ╠═588313b7-f8a7-45d9-baa2-5e5527c6f58a
+# ╟─b35d4e6c-25c0-457b-b0e0-16a040fefe47
+# ╠═bcf3dacd-97f0-46a6-98a0-960674cbf4ca
+# ╟─5768d7a9-987e-4520-90ac-6bc1c0ef4d7c
+# ╠═06695ef2-2796-48ce-a392-6694b00122d5
+# ╟─e6c39168-2de1-4c1d-b2b0-dd304d374951
+# ╠═974ffa81-a44b-4beb-95fb-e763554aaeb1
+# ╟─aa8c018e-db2b-4018-873f-3e2d630b50b3
+# ╠═8f0903a6-a8d2-4e1c-a3e0-5c81a5290bcb
+# ╟─ab2e4868-6518-4d5c-a9ba-0652963405d5
+# ╠═d90b8c4f-79c3-47fc-85ab-0684e6ffdd8d
+# ╟─3577ac41-87f3-42f6-ae57-c815dad2561f
+# ╠═cd87cdeb-87c3-4807-9406-185e0bb90382
+# ╠═42887605-74d0-46b9-92ff-852c1bf18d76
 # ╟─7303fa7a-bd27-4a34-b0f7-2400c4bf0776
 # ╟─ee289f87-364e-46f7-8cc9-7256356dccd6
 # ╟─00000000-0000-0000-0000-000000000001
