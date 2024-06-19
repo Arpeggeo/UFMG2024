@@ -4,27 +4,23 @@ Minicurso de geociência de dados na mineração.
 
 Instrutor: [Júlio Hoffimann](https://juliohm.github.io)
 
-## Instruções
+## Instruções de instalação
 
 1. Instale a linguagem Julia **v1.10** através do
    [juliaup](https://apps.microsoft.com/store/detail/julia/9NJNWW8PVKMN?hl=pt-br&gl=br&rtc=1).
-3. Instale o Pluto **v0.19** ou superior usando o seguinte comando no terminal Julia:
+2. Instale o Pluto **v0.19** ou superior usando o seguinte comando no terminal Julia:
 
 ```julia
 import Pkg
 Pkg.add("Pluto")
 ```
 
-## Como executar os notebooks?
-
-Faca o download deste repositório e salve em uma pasta
-de fácil acesso no seu sistema operacional.
-
-Com o Pluto instalado no Julia, inicie o sistema de notebooks:
+3. Ainda no terminal Julia, inicie o sistema de notebooks Pluto:
 
 ```julia
 import Pluto
 Pluto.run()
 ```
 
-e selecione um dos notebooks na pasta (extensão `.jl`).
+4. Selecione o notebook de instalação `install.jl` e pressione `Open`.
+5. Pressione o botão `Run notebook code` no canto superior direito.
