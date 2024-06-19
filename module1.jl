@@ -189,7 +189,7 @@ Escreva uma função `volume` que retorna o volume da esfera de raio `r`:
 """
 
 # ╔═╡ 9e080505-d23f-4cfd-b824-c35ad4608b97
-volume(r) = missing
+volume(r) = 4/3 * π * r^3
 
 # ╔═╡ cf5e6564-e64a-4a71-9165-89d0515c23ea
 begin
@@ -264,7 +264,8 @@ Dado um ângulo `θ` em radianos, escreva uma função `rotation` que retorna a 
 
 # ╔═╡ d17ea441-64db-4b7e-aec3-89a6bf41eabb
 function rotation(θ)
-	missing
+	[cos(θ) -sin(θ)
+	 sin(θ)  cos(θ)]
 end
 
 # ╔═╡ 8b443c65-f28d-4b2e-b9e6-26d271087980
@@ -292,7 +293,7 @@ Escreva a função `square` que retorna todos os elementos da coleção `xs` ao 
 """
 
 # ╔═╡ 6c2cdf6a-3584-4dae-8c52-c14d8bef3807
-square(xs) = missing
+square(xs) = xs .^ 2
 
 # ╔═╡ af4fd3a3-345c-4577-ba97-2eb877778a88
 begin
@@ -361,7 +362,13 @@ Você pode copiar e colar o símbolo de um emoji dentro de uma string `"🚜"` u
 
 # ╔═╡ 2636fc67-515a-4588-b969-6b76853a7b25
 function emoji(name)
-	missing
+	if name == "diamond"
+		"💎"
+	elseif name == "tool"
+		"⛏️"
+	elseif name == "tractor"
+		"🚜"
+	end
 end
 
 # ╔═╡ d24b2d21-5d02-41d3-97f9-917fd9504937
@@ -514,7 +521,7 @@ Salve o resultado na variável `res`:
 """
 
 # ╔═╡ 438bdf51-ccfb-496e-b30e-24dcef0f969b
-res = missing
+res = df[df."Au ppm" .+ df."Cu ppm" .> 0.5, :]
 
 # ╔═╡ 453ac429-36fa-4f2d-9b73-63bfc7d8a2f7
 begin
