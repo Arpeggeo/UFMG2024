@@ -38,5 +38,5 @@ import Pluto
 Pluto.run()
 ```
 
-6. Selecione o notebook de instalação `install.jl` e pressione `Open`.
+6. Arraste o notebook de instalação `install.jl` para o Pluto.
 7. Pressione o botão `Run notebook code` no canto superior direito.
