@@ -163,7 +163,7 @@ PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 [compat]
 CSV = "~0.10.14"
 CairoMakie = "~0.12.3"
-DrillHoles = "~1.3.4"
+DrillHoles = "~1.3.5"
 GeoStats = "~0.59.0"
 PairPlots = "~2.7.3"
 PlutoTeachingTools = "~0.2.15"
@@ -176,7 +176,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.10.4"
 manifest_format = "2.0"
-project_hash = "0b2cc0471537f321af5f88a9d55b768af19ff323"
+project_hash = "b35234d7fbf9338c23a87214618a3c4a714d4bf7"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -728,9 +728,9 @@ version = "1.6.0"
 
 [[deps.DrillHoles]]
 deps = ["DataFrames", "DataScienceTraits", "GeoTables", "Interpolations", "LinearAlgebra", "Meshes", "TableTransforms", "Tables"]
-git-tree-sha1 = "daea6fd44000f8fdc0f99d1c3724724a52823be1"
+git-tree-sha1 = "219ffc1197609f15ab2947708b3a22bbc00d2812"
 uuid = "9d36f3b5-8124-4f7e-bcda-df733105c718"
-version = "1.3.4"
+version = "1.3.5"
 
 [[deps.DualNumbers]]
 deps = ["Calculus", "NaNMath", "SpecialFunctions"]
